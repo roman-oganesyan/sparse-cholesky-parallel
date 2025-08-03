@@ -142,9 +142,3 @@ std::vector<double> Matrix::transpose_multiply_by_vector(const std::vector<doubl
 
     return result;
 }
-
-/*
-std::vector<Matrix::Entry> CSR_to_mtx(Matrix& csr) {
-    
-}
-*/

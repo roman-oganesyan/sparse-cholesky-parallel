@@ -25,26 +25,6 @@ public:
 	int rows() const { return m_rows; }
 	int cols() const { return m_cols; }
 	int nnz() const { return m_nnz; }
-
-
-	/*
-	const std::vector<double>& get_elements() const;
-	const std::vector<int>& get_col_inds() const;
-	const std::vector<int>& get_row_ptrs() const;
-	*/
-
-	/*
-	Matrix(const Matrix& orig) = default;
-	Matrix& operator=(const Matrix& other) = default;
-	Matrix(Matrix&& orig) = default;
-	Matrix& operator=(Matrix&& other) = default;
-	*/
-
-	//~Matrix() = default;
 };
-
-// THE MOVE CTOR AND =
-// TRANSPONING AND MULTIPLICATION
-// ADDING ?
 
 Matrix mtx_loader(const std::string& filename);
