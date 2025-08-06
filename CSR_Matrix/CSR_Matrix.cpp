@@ -7,7 +7,7 @@
 
 
 // .mtx CSR matrix loader
-Matrix mtx_loader(const std::string& filename) {
+Matrix load_mtx(const std::string& filename) {
     std::ifstream file(filename);
     if (!file) 
         throw std::runtime_error("Couldn't open file " + filename);
@@ -71,7 +71,7 @@ Matrix::Matrix(int rows, int cols, int nnz)
 		throw std::runtime_error("Invalid matrix dimensions");
 	m_elems.reserve(nnz);
 	m_col_inds.reserve(nnz);
-	m_row_ptrs.resize(rows + 1, 0);
+	m_row_ptrs.reserve(rows + 1);
 }
 
 Matrix::Matrix(int rows, int cols, const std::vector<Entry>& entries) :
@@ -84,7 +84,6 @@ Matrix::Matrix(int rows, int cols, const std::vector<Entry>& entries) :
     m_elems.reserve(m_nnz);
     m_col_inds.reserve(m_nnz);
     int counter = 0;
-    m_row_ptrs[0] = 0;
 
     for (const auto& entry : entries) {
         const int row = std::get<0>(entry);

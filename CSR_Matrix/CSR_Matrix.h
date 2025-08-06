@@ -27,4 +27,4 @@ public:
 	int nnz() const { return m_nnz; }
 };
 
-Matrix mtx_loader(const std::string& filename);
+Matrix load_mtx(const std::string& filename);
