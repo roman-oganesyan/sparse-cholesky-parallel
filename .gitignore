@@ -1,0 +1,10 @@
+/x64
+/.vs
+/OS_lab2.sln
+
+/OS_lab2/.mtx-files
+/OS_lab2/x64
+/OS_lab2/OS_lab2.vcxproj
+/OS_lab2/OS_lab2.vcxproj.filters
+/OS_lab2/OS_lab2.vcxproj.user
+/OS_lab2/ct20stif.mtx
