@@ -4,7 +4,7 @@
 #include <string>
 
 // CSR Matrix class 
-class Matrix { 
+class Matrix {
 private:
 	int m_rows;
 	int m_cols;
@@ -17,14 +17,18 @@ public:
 	Matrix() = delete;
 	Matrix(int rows, int cols, int nnz);
 	Matrix(int rows, int cols, const std::vector<Entry>& entries);
-	//Matrix(int rows, int cols, const std::vector<int>& col_ptrs, const std::vector<int>& row_ptrs, const std::vector<double>& elems);
 
+	int rows() const;
+	int cols() const;
+	int nnz() const;
+	const std::vector<double>& values() const;
+	const std::vector<int>& col_indices() const;
+	const std::vector<int>& row_pointers() const;
+
+	bool is_symmetric() const;
+	double get_element(int i, int j) const;
 	std::vector<double> multiply_by_vector(const std::vector<double>& vec) const;
 	std::vector<double> transpose_multiply_by_vector(const std::vector<double>& vec) const;
-
-	int rows() const { return m_rows; }
-	int cols() const { return m_cols; }
-	int nnz() const { return m_nnz; }
 };
 
-Matrix mtx_loader(const std::string& filename);
+Matrix load_mtx(const std::string& filename);

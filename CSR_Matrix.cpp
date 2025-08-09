@@ -7,7 +7,7 @@
 
 
 // .mtx CSR matrix loader
-Matrix mtx_loader(const std::string& filename) {
+Matrix load_mtx(const std::string& filename) {
     std::ifstream file(filename);
     if (!file) 
         throw std::runtime_error("Couldn't open file " + filename);
@@ -67,11 +67,11 @@ Matrix mtx_loader(const std::string& filename) {
 
 Matrix::Matrix(int rows, int cols, int nnz)
 	: m_rows(rows), m_cols(cols), m_nnz(nnz) {
-	if (rows <= 0 || cols <= 0 || nnz <= 0)
+	if (rows <= 0 || cols <= 0 || nnz < 0)
 		throw std::runtime_error("Invalid matrix dimensions");
 	m_elems.reserve(nnz);
 	m_col_inds.reserve(nnz);
-	m_row_ptrs.resize(rows + 1, 0);
+	m_row_ptrs.reserve(rows + 1);
 }
 
 Matrix::Matrix(int rows, int cols, const std::vector<Entry>& entries) :
@@ -84,7 +84,6 @@ Matrix::Matrix(int rows, int cols, const std::vector<Entry>& entries) :
     m_elems.reserve(m_nnz);
     m_col_inds.reserve(m_nnz);
     int counter = 0;
-    m_row_ptrs[0] = 0;
 
     for (const auto& entry : entries) {
         const int row = std::get<0>(entry);
@@ -98,6 +97,34 @@ Matrix::Matrix(int rows, int cols, const std::vector<Entry>& entries) :
     for (int r = 0; r < rows; ++r) { //row ptr calculation 2 (adding the previous row starting index)
         m_row_ptrs[r + 1] += m_row_ptrs[r];
     }
+}
+
+int Matrix::rows() const { return m_rows; }
+int Matrix::cols() const { return m_cols; }
+int Matrix::nnz() const { return m_nnz; }
+const std::vector<double>& Matrix::values() const { return m_elems; }
+const std::vector<int>& Matrix::col_indices() const { return m_col_inds; }
+const std::vector<int>& Matrix::row_pointers() const { return m_row_ptrs; }
+
+bool Matrix::is_symmetric() const {
+    if (m_rows != m_cols) return false;
+    for (int i = 0; i < m_rows; ++i) {
+        for (int idx = m_row_ptrs[i]; idx < m_row_ptrs[i + 1]; ++idx) {
+            int j = m_col_inds[idx];
+            if (std::abs(m_elems[idx] - get_element(j, i)) > 1e-9) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+double Matrix::get_element(int i, int j) const {
+    if (i < 0 || i >= m_rows || j < 0 || j >= m_cols) return 0.0;
+    for (int idx = m_row_ptrs[i]; idx < m_row_ptrs[i + 1]; ++idx) {
+        if (m_col_inds[idx] == j) return m_elems[idx];
+    }
+    return 0.0;
 }
 
 std::vector<double> Matrix::multiply_by_vector(const std::vector<double>& vec) const {
