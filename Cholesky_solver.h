@@ -1,10 +1,6 @@
 #include "CSR_Matrix.h"
 #include <vector>
-#include <cmath>
-#include <algorithm>
-#include <stdexcept>
-#include <iostream>
-#include <unordered_map>
+#include <chrono>
 
 class CholeskySolver {
 public:
@@ -15,4 +11,6 @@ public:
         const std::vector<double>& b,
         const std::vector<double>& L_vals
     );
+
+    static std::pair<long, long> test(int thread_num, const Matrix& A, const std::vector<double>& b);
 };

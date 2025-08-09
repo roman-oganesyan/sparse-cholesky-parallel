@@ -1,4 +1,10 @@
 #include "Cholesky_solver.h"
+#include <cmath>
+#include <algorithm>
+#include <stdexcept>
+#include <iostream>
+#include <unordered_map>
+#include <omp.h>
 
 std::vector<double> CholeskySolver::decompose(const Matrix& A) {
     if (A.rows() != A.cols()) {
@@ -13,30 +19,29 @@ std::vector<double> CholeskySolver::decompose(const Matrix& A) {
     const auto& col_inds = A.col_indices();
     const auto& values = A.values();
 
-    // Копируем значения матрицы для модификации
-    std::vector<double> L_vals(values);
+    std::vector<double> L_vals(values); // The L matrix non-xero values
 
-    // Структура для быстрого доступа к элементам по столбцам
+    // Easing access to matrix by columns
     std::vector<std::unordered_map<int, double>> col_map(n);
+
     for (int i = 0; i < n; ++i) {
         for (int idx = row_ptrs[i]; idx < row_ptrs[i + 1]; ++idx) {
             int j = col_inds[idx];
-            if (i >= j) { // Нижний треугольник
+            if (i >= j) { 
                 col_map[j][i] = L_vals[idx];
             }
         }
     }
 
-    // Основной цикл разложения
     for (int j = 0; j < n; ++j) {
-        // Обработка диагонального элемента
+        // Processing diagonal elements of the matrix
         double diag_val = col_map[j][j];
         for (int k = 0; k < j; ++k) {
             if (col_map[k].find(j) != col_map[k].end()) {
                 diag_val -= col_map[k][j] * col_map[k][j];
             }
         }
-
+        // Checking suitability for the Cholesky decomposition
         if (diag_val <= 0) {
             throw std::runtime_error("Matrix is not positive definite");
         }
@@ -44,7 +49,7 @@ std::vector<double> CholeskySolver::decompose(const Matrix& A) {
         diag_val = std::sqrt(diag_val);
         col_map[j][j] = diag_val;
 
-        // Обновление поддиагональных элементов
+        // Processing the rest of the matrix
         for (int i = j + 1; i < n; ++i) {
             if (col_map[j].find(i) != col_map[j].end()) {
                 double val = col_map[j][i];
@@ -59,7 +64,6 @@ std::vector<double> CholeskySolver::decompose(const Matrix& A) {
         }
     }
 
-    // Конвертируем результат обратно в плоский массив
     std::vector<double> result(values.size(), 0.0);
     for (int i = 0; i < n; ++i) {
         for (int idx = row_ptrs[i]; idx < row_ptrs[i + 1]; ++idx) {
@@ -82,17 +86,16 @@ std::vector<double> CholeskySolver::solve(
     const auto& row_ptrs = A.row_pointers();
     const auto& col_inds = A.col_indices();
 
-    // Прямая подстановка (Ly = b)
+    // Direct solution of the Ly = b equation
     std::vector<double> y(n, 0.0);
     for (int i = 0; i < n; ++i) {
         double sum = b[i];
         for (int idx = row_ptrs[i]; idx < row_ptrs[i + 1]; ++idx) {
             int j = col_inds[idx];
-            if (j < i) { // Элементы левее диагонали
+            if (j < i) { 
                 sum -= L_vals[idx] * y[j];
             }
         }
-        // Диагональный элемент
         for (int idx = row_ptrs[i]; idx < row_ptrs[i + 1]; ++idx) {
             if (col_inds[idx] == i) {
                 y[i] = sum / L_vals[idx];
@@ -101,13 +104,11 @@ std::vector<double> CholeskySolver::solve(
         }
     }
 
-    // Обратная подстановка (L^Tx = y)
+    // Inverse substitution (L^Tx = y)
     std::vector<double> x(n, 0.0);
     for (int i = n - 1; i >= 0; --i) {
         double sum = y[i];
-        // Используем доступ по столбцам через предварительное построение карты
         for (int j = i + 1; j < n; ++j) {
-            // Поиск элемента L(j,i)
             for (int idx = row_ptrs[j]; idx < row_ptrs[j + 1]; ++idx) {
                 if (col_inds[idx] == i) {
                     sum -= L_vals[idx] * x[j];
@@ -115,7 +116,6 @@ std::vector<double> CholeskySolver::solve(
                 }
             }
         }
-        // Диагональный элемент
         for (int idx = row_ptrs[i]; idx < row_ptrs[i + 1]; ++idx) {
             if (col_inds[idx] == i) {
                 x[i] = sum / L_vals[idx];
@@ -125,4 +125,20 @@ std::vector<double> CholeskySolver::solve(
     }
 
     return x;
+}
+
+std::pair<long, long> CholeskySolver::test(int thread_num, const Matrix& A, const std::vector<double>& b) {
+    omp_set_num_threads(thread_num);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    std::vector<double> L_vals = CholeskySolver::decompose(A);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto time_decompose = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    start = std::chrono::high_resolution_clock::now();
+    std::vector<double> x = CholeskySolver::solve(A, b, L_vals);
+    end = std::chrono::high_resolution_clock::now();
+    auto time_solve = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    return std::make_pair(time_decompose, time_solve);
 }

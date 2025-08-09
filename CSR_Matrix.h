@@ -14,6 +14,7 @@ private:
 	std::vector<int> m_row_ptrs;
 public:
 	using Entry = std::tuple<int, int, double>;
+
 	Matrix() = delete;
 	Matrix(int rows, int cols, int nnz);
 	Matrix(int rows, int cols, const std::vector<Entry>& entries);

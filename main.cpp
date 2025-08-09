@@ -1,35 +1,26 @@
 #include "CSR_Matrix.h"
 #include "Cholesky_solver.h"
 #include <iostream>
+#include <vector>
 #include <chrono>
 
 int main() {
+    using Log = std::tuple<int, std::pair<long, long>>;
+    std::vector<Log> tests_res(21);
+
     Matrix A = load_mtx("5k.mtx");
-
-    if (!A.is_symmetric()) {
-        throw std::runtime_error("Matrix is not symmetric");
-    }
-
     std::vector<double> b(A.rows(), 1.0);
 
-    std::cout << "Cholesky decomposition started..." << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
+    for (int thread_num = 1; thread_num <= 12; ++thread_num) {
+        tests_res.emplace_back(thread_num, CholeskySolver::test(thread_num, A, b));
+    }
+    for (int thread_num = 20; thread_num <= 100; thread_num += 10) {
+        tests_res.emplace_back(thread_num, CholeskySolver::test(thread_num, A, b));
+    }
 
-    std::vector<double> L_vals = CholeskySolver::decompose(A);
-
-    auto end = std::chrono::high_resolution_clock::now();
-    std::cout << "Decomposition time: "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-        << " ms" << std::endl;
-
-    std::cout << "Solver started..." << std::endl;
-    start = std::chrono::high_resolution_clock::now();
-
-    std::vector<double> x = CholeskySolver::solve(A, b, L_vals);
-
-    end = std::chrono::high_resolution_clock::now();
-    std::cout << "Solving time: "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-        << " ms" << std::endl;
+    std::cout << "Number of threads | Decomposition time | Solving time | Total time" << std::endl;
+    for (auto test : tests_res) {
+        std::cout << std::get<0>(test) << '\t' << std::get<1>(test).first << '\t' << std::get<1>(test).second << std::endl;
+    }
     return 0;
 }
