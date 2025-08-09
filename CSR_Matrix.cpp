@@ -116,6 +116,7 @@ bool Matrix::is_symmetric() const {
             }
         }
     }
+
     return true;
 }
 
@@ -124,6 +125,7 @@ double Matrix::get_element(int i, int j) const {
     for (int idx = m_row_ptrs[i]; idx < m_row_ptrs[i + 1]; ++idx) {
         if (m_col_inds[idx] == j) return m_elems[idx];
     }
+
     return 0.0;
 }
 
