@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <iostream>
 #include <unordered_map>
-#include <omp.h>
 
 std::vector<double> CholeskySolver::decompose(const Matrix& A) {
     if (A.rows() != A.cols()) {
@@ -127,8 +126,7 @@ std::vector<double> CholeskySolver::solve(
     return x;
 }
 
-std::pair<long, long> CholeskySolver::test(int thread_num, const Matrix& A, const std::vector<double>& b) {
-    omp_set_num_threads(thread_num);
+std::pair<long, long> CholeskySolver::test(const Matrix& A, const std::vector<double>& b) {
 
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<double> L_vals = CholeskySolver::decompose(A);
