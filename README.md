@@ -1,1 +1,2 @@
-Parallel implementation of the Cholesky decomposition for sparse matrices. The development has begun recently and only has its foundation made yet. With upcoming updates it will gain new features such as the Cholesky algorithm itself, its parallel version that will be made using OpenMP. The final updates will consist of a special class for symmetric CSR matrices that will save half the memory used for each symmetric matrix and Cholesky algorithm adaptation for matrices of this class. 
+[Parallel] implementation of the Cholesky decomposition for sparse matrices
+This repository now only has the version made without parallelisation, while the parallel implementation is still being tested
