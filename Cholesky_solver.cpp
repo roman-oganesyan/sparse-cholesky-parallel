@@ -1,6 +1,5 @@
 #include "Cholesky_solver.h"
 #include <cmath>
-#include <algorithm>
 #include <stdexcept>
 #include <iostream>
 #include <unordered_map>
@@ -15,47 +14,45 @@ std::vector<double> CholeskySolver::decompose(const Matrix& A) {
     }
 
     const int n = A.rows();
-    const auto& row_ptrs = A.row_pointers();
-    const auto& col_inds = A.col_indices();
-    const auto& values = A.values();
+    const int* row_ptrs = A.row_pointers();
+    const int* col_inds = A.col_indices();
+    const double* values = A.values();
+    const int nnz = A.nnz();
 
-    std::vector<double> L_vals(values); // The L matrix non-xero values
-
-    // Easing access to matrix by columns
+    std::vector<double> L_vals(values, values + nnz);
     std::vector<std::unordered_map<int, double>> col_map(n);
 
+#pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < n; ++i) {
         for (int idx = row_ptrs[i]; idx < row_ptrs[i + 1]; ++idx) {
             int j = col_inds[idx];
-            if (i >= j) { 
+            if (i >= j) {
+#pragma omp critical
                 col_map[j][i] = L_vals[idx];
             }
         }
     }
 
     for (int j = 0; j < n; ++j) {
-        // Processing diagonal elements of the matrix
         double diag_val = col_map[j][j];
+#pragma omp parallel for
         for (int k = 0; k < j; ++k) {
-            if (col_map[k].find(j) != col_map[k].end()) {
+            if (col_map[k].count(j)) {
                 diag_val -= col_map[k][j] * col_map[k][j];
             }
         }
-        // Checking suitability for the Cholesky decomposition
         if (diag_val <= 0) {
             throw std::runtime_error("Matrix is not positive definite");
         }
-
         diag_val = std::sqrt(diag_val);
         col_map[j][j] = diag_val;
 
-        // Processing the rest of the matrix
+#pragma omp parallel for schedule(dynamic)
         for (int i = j + 1; i < n; ++i) {
-            if (col_map[j].find(i) != col_map[j].end()) {
+            if (col_map[j].count(i)) {
                 double val = col_map[j][i];
                 for (int k = 0; k < j; ++k) {
-                    if (col_map[k].find(i) != col_map[k].end() &&
-                        col_map[k].find(j) != col_map[k].end()) {
+                    if (col_map[k].count(i) && col_map[k].count(j)) {
                         val -= col_map[k][i] * col_map[k][j];
                     }
                 }
@@ -64,17 +61,17 @@ std::vector<double> CholeskySolver::decompose(const Matrix& A) {
         }
     }
 
-    std::vector<double> result(values.size(), 0.0);
+#pragma omp parallel for
     for (int i = 0; i < n; ++i) {
         for (int idx = row_ptrs[i]; idx < row_ptrs[i + 1]; ++idx) {
             int j = col_inds[idx];
             if (i >= j) {
-                result[idx] = col_map[j][i];
+                L_vals[idx] = col_map[j][i];
             }
         }
     }
 
-    return result;
+    return L_vals;
 }
 
 std::vector<double> CholeskySolver::solve(
@@ -83,16 +80,16 @@ std::vector<double> CholeskySolver::solve(
     const std::vector<double>& L_vals
 ) {
     const int n = A.rows();
-    const auto& row_ptrs = A.row_pointers();
-    const auto& col_inds = A.col_indices();
+    const int* row_ptrs = A.row_pointers();
+    const int* col_inds = A.col_indices();
 
-    // Solution of the Ly = b equation
+    // Прямая подстановка (Ly = b)
     std::vector<double> y(n, 0.0);
     for (int i = 0; i < n; ++i) {
         double sum = b[i];
         for (int idx = row_ptrs[i]; idx < row_ptrs[i + 1]; ++idx) {
             int j = col_inds[idx];
-            if (j < i) { 
+            if (j < i) {
                 sum -= L_vals[idx] * y[j];
             }
         }
@@ -104,7 +101,7 @@ std::vector<double> CholeskySolver::solve(
         }
     }
 
-    // Inverse substitution (L^Tx = y)
+    // Обратная подстановка (L^Tx = y)
     std::vector<double> x(n, 0.0);
     for (int i = n - 1; i >= 0; --i) {
         double sum = y[i];
@@ -124,19 +121,47 @@ std::vector<double> CholeskySolver::solve(
         }
     }
 
+    // Проверка точности решения
+    std::vector<double> Ax = A.multiply_by_vector(x);
+    double discrepancy = 0.0;
+    int error_count = 0;
+    const double tolerance = 1e-6;
+
+    // Вычисление нормы вектора b вручную
+    double b_norm = 0.0;
+    for (int i = 0; i < n; ++i) {
+        b_norm += b[i] * b[i];
+    }
+    b_norm = std::sqrt(b_norm);
+
+    for (int i = 0; i < n; ++i) {
+        double diff = std::abs(Ax[i] - b[i]);
+        if (diff > tolerance) {
+            error_count++;
+        }
+        discrepancy += diff * diff;
+    }
+
+    discrepancy = std::sqrt(discrepancy);
+    double relative_error = discrepancy / (b_norm > 0.0 ? b_norm : 1.0);
+    double error_percentage = (static_cast<double>(error_count) / n) * 100.0;
+
+    std::cout << "Discrepancy norm: " << discrepancy << std::endl;
+    std::cout << "Relative error: " << relative_error << std::endl;
+    std::cout << "Elements with error > " << tolerance << ": " << error_percentage << "%" << std::endl;
+
     return x;
 }
 
 std::pair<long, long> CholeskySolver::test(int thread_num, const Matrix& A, const std::vector<double>& b) {
     omp_set_num_threads(thread_num);
-
     auto start = std::chrono::high_resolution_clock::now();
-    std::vector<double> L_vals = CholeskySolver::decompose(A);
+    std::vector<double> L_vals = decompose(A);
     auto end = std::chrono::high_resolution_clock::now();
     auto time_decompose = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
     start = std::chrono::high_resolution_clock::now();
-    std::vector<double> x = CholeskySolver::solve(A, b, L_vals);
+    std::vector<double> x = solve(A, b, L_vals);
     end = std::chrono::high_resolution_clock::now();
     auto time_solve = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
