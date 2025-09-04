@@ -121,38 +121,31 @@ std::vector<double> CholeskySolver::solve(
         }
     }
 
-    /*
-    * 
-    // Проверка точности решения
+    // Precision check
     std::vector<double> Ax = A.multiply_by_vector(x);
     double discrepancy = 0.0;
     int error_count = 0;
     const double tolerance = 1e-6;
 
-    // Вычисление нормы вектора b вручную
     double b_norm = 0.0;
     for (int i = 0; i < n; ++i) {
         b_norm += b[i] * b[i];
     }
     b_norm = std::sqrt(b_norm);
 
+    double Axb_norm = 0.0;
     for (int i = 0; i < n; ++i) {
-        double diff = std::abs(Ax[i] - b[i]);
-        if (diff > tolerance) {
-            error_count++;
-        }
-        discrepancy += diff * diff;
+        Axb_norm += (Ax[i] - b[i]) * (Ax[i] - b[i]);
     }
+    Axb_norm = std::sqrt(Axb_norm);
 
-    discrepancy = std::sqrt(discrepancy);
-    double relative_error = discrepancy / (b_norm > 0.0 ? b_norm : 1.0);
-    double error_percentage = (static_cast<double>(error_count) / n) * 100.0;
+    // dim > 10^5 -> /b_norm
 
-    std::cout << "Discrepancy norm: " << discrepancy << std::endl;
-    std::cout << "Relative error: " << relative_error << std::endl;
-    std::cout << "Elements with error > " << tolerance << ": " << error_percentage << "%" << std::endl;
-    */
-
+    std::cout << "Norm difference: " << Axb_norm / b_norm << std::endl;
+    std::cout << "First 100 elements:" << std::endl;
+    for (int i = 0; i < 100; ++i) {
+        std::cout << i << ' ' << x[i] << std::endl;
+    }
     return x;
 }
 
