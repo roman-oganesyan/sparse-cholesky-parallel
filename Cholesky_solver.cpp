@@ -121,6 +121,8 @@ std::vector<double> CholeskySolver::solve(
         }
     }
 
+    /*
+    * 
     // Проверка точности решения
     std::vector<double> Ax = A.multiply_by_vector(x);
     double discrepancy = 0.0;
@@ -149,6 +151,7 @@ std::vector<double> CholeskySolver::solve(
     std::cout << "Discrepancy norm: " << discrepancy << std::endl;
     std::cout << "Relative error: " << relative_error << std::endl;
     std::cout << "Elements with error > " << tolerance << ": " << error_percentage << "%" << std::endl;
+    */
 
     return x;
 }
